@@ -1,7 +1,24 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient();
+// Singleton pattern for Prisma client
+const prismaClientSingleton = () => {
+  return new PrismaClient({
+    log: ['query', 'error', 'warn'],
+  });
+};
+
+type GlobalThisWithPrisma = typeof globalThis & {
+  prisma?: ReturnType<typeof prismaClientSingleton>;
+};
+
+const globalForPrisma = global as GlobalThisWithPrisma;
+
+const db = globalForPrisma.prisma ?? prismaClientSingleton();
+
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db;
+
+export { db };
 
 // READ
 export async function GET(request: Request) {
@@ -11,7 +28,7 @@ export async function GET(request: Request) {
     
     // If no ID is provided, fetch all records
     if (!id) {
-      const records = await prisma.weatherRecord.findMany({
+      const records = await db.weatherRecord.findMany({
         orderBy: { createdAt: 'desc' }
       });
       console.log('Found records:', records);
@@ -19,7 +36,7 @@ export async function GET(request: Request) {
     }
 
     // Fetch single record by ID
-    const record = await prisma.weatherRecord.findUnique({
+    const record = await db.weatherRecord.findUnique({
       where: { id: parseInt(id) }
     });
 
@@ -73,7 +90,7 @@ export async function POST(request: Request) {
       weatherData: JSON.stringify(data.weatherData)
     };
 
-    const record = await prisma.weatherRecord.create({
+    const record = await db.weatherRecord.create({
       data: recordData
     });
     
@@ -119,7 +136,7 @@ export async function PUT(request: Request) {
       updateData.weatherData = JSON.stringify(data.weatherData);
     }
 
-    const record = await prisma.weatherRecord.update({
+    const record = await db.weatherRecord.update({
       where: { id: parseInt(id) },
       data: updateData
     });
@@ -148,7 +165,7 @@ export async function DELETE(request: Request) {
     }
 
     console.log('Deleting record:', id);
-    await prisma.weatherRecord.delete({
+    await db.weatherRecord.delete({
       where: { id: parseInt(id) }
     });
     console.log('Record deleted successfully');
