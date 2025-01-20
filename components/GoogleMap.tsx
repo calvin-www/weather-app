@@ -19,8 +19,7 @@ const GoogleMapComponent: React.FC<GoogleMapComponentProps> = ({
   // Robust API key detection
   const apiKey =
     process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ||
-    process.env.GOOGLE_MAPS_API_KEY ||
-    'AIzaSyAnBbWcHvMVsJlB8uQqELfyRvt_9nXiloA'; // Fallback to the hardcoded key
+    process.env.GOOGLE_MAPS_API_KEY
 
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: apiKey || '',

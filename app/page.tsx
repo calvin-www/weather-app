@@ -360,6 +360,23 @@ export default function Home() {
     fetchWeather(location, today, fiveDaysLater);
   };
 
+  const handleFindMe = async () => {
+    if (geolocation.location) {
+      try {
+        const response = await fetch(`/api/weather?location=${geolocation.location.latitude},${geolocation.location.longitude}&mode=current`);
+        const data = await response.json();
+        
+        if (data.location) {
+          setLocation(data.location);
+        } else {
+          setLocation(`${geolocation.location.latitude}, ${geolocation.location.longitude}`);
+        }
+      } catch (error) {
+        setLocation(`${geolocation.location.latitude}, ${geolocation.location.longitude}`);
+      }
+    }
+  };
+
   useEffect(() => {
     fetchRecords();
   }, []);
@@ -401,8 +418,12 @@ export default function Home() {
             value={location}
             onChange={(e) => setLocation(e.target.value)}
           />
-          <Button color="primary" isLoading={loading} onClick={handleSearch}>
-            Get Weather
+          <Button 
+            color="secondary" 
+            isLoading={loading} 
+            onClick={handleFindMe}
+          >
+            Find Me
           </Button>
         </div>
 
@@ -419,6 +440,9 @@ export default function Home() {
           />
           <Button color="secondary" onClick={handleFiveDayForecast}>
             5-Day Forecast
+          </Button>
+          <Button color="primary" isLoading={loading} onClick={handleSearch}>
+            Get Weather
           </Button>
         </div>
       </div>
