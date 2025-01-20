@@ -40,12 +40,15 @@ export async function GET(request: Request) {
   }
 }
 
-// EXPORT
+// EXPORT AND CREATE
 export async function POST(request: Request) {
   try {
-    const { action, recordIds, format } = await request.json();
+    const body = await request.json();
+    const { action } = body;
 
+    // Handle export action
     if (action === 'export') {
+      const { recordIds, format } = body;
       if (!validFormats.includes(format)) {
         return NextResponse.json(
           { error: 'Invalid export format' },
@@ -53,66 +56,73 @@ export async function POST(request: Request) {
         );
       }
 
-      const exportFormat = format as ExportFormat;
-
-      // Fetch selected records
       const records = await db.weatherRecord.findMany({
         where: {
-          id: { in: recordIds.map((id: string) => parseInt(id)) }
+          id: {
+            in: recordIds
+          }
         }
       });
 
-      // Convert to selected format using properly typed function
-      const exportContent = exportFormats[exportFormat](records);
+      if (!records.length) {
+        return NextResponse.json(
+          { error: 'No records found' },
+          { status: 404 }
+        );
+      }
 
-      // Return export data with properly typed mime type
+      const exportedData = exportFormats[format as ExportFormat](records);
+      
       return NextResponse.json({
-        content: exportContent,
-        mimeType: exportMimeTypes[exportFormat],
-        filename: `weather_records_export_${exportFormat}`
+        success: true,
+        content: exportedData,
+        filename: `weather_records_${new Date().toISOString().split('T')[0]}`,
+        mimeType: exportMimeTypes[format as ExportFormat]
       });
     }
-
-    // Existing POST logic for creating records
-    const data = await request.json();
-    console.log('Creating new record with data:', data);
+    
+    // Handle record creation
+    const { location, latitude, longitude, startDate, endDate, weatherData } = body;
     
     // Validate required fields
-    if (!data.location || data.latitude == null || data.longitude == null || 
-        !data.startDate || !data.endDate || !data.weatherData) {
-      console.error('Missing required fields:', data);
+    if (!location || !weatherData) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
       );
     }
 
-    // Prepare record data
-    const recordData: any = {
-      location: data.location,
-      latitude: typeof data.latitude === 'string' ? parseFloat(data.latitude) : data.latitude,
-      longitude: typeof data.longitude === 'string' ? parseFloat(data.longitude) : data.longitude,
-      startDate: new Date(data.startDate),
-      endDate: new Date(data.endDate),
-      temperature_min: data.weatherData.forecast.reduce((min: number, day: any) => 
-        Math.min(min, day.temp_min), Infinity),
-      temperature_max: data.weatherData.forecast.reduce((max: number, day: any) => 
-        Math.max(max, day.temp_max), -Infinity),
-      description: data.weatherData.current.description || '',
-      // Optional: Store additional weather data as JSON
-      weatherData: JSON.stringify(data.weatherData)
-    };
+    try {
+      // Create record
+      const record = await db.weatherRecord.create({
+        data: {
+          location,
+          latitude,
+          longitude,
+          startDate: new Date(startDate),
+          endDate: new Date(endDate),
+          weatherData
+        }
+      });
 
-    const record = await db.weatherRecord.create({
-      data: recordData
-    });
-    
-    console.log('Created record:', record);
-    return NextResponse.json({ success: true, record });
+      return NextResponse.json({
+        success: true,
+        record
+      });
+    } catch (error) {
+      console.error('Failed to create record:', error);
+      return NextResponse.json(
+        { error: error instanceof Error ? error.message : 'Failed to create record' },
+        { status: 500 }
+      );
+    }
   } catch (error) {
-    console.error('Failed to create record:', error);
+    console.error('API error:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to create record' },
+      { 
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to process request' 
+      },
       { status: 500 }
     );
   }

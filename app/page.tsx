@@ -15,7 +15,6 @@ import toast from 'react-hot-toast';
 import RecordsTable from '@/components/RecordsTable';
 import { WeatherData, WeatherRecord } from '@/types/weather';
 import ExportModal from '@/components/ExportModal';
-import { FileDown } from 'lucide-react';
 
 const getWeatherIcon = (iconCode: string) => {
   return `https://openweathermap.org/img/wn/${iconCode}@2x.png`;
@@ -140,13 +139,17 @@ export default function Home() {
         endDate: dateRange.end 
           ? convertFromCalendarDate(dateRange.end).toISOString() 
           : new Date().toISOString(),
-        weatherData: {
+        weatherData: JSON.stringify({
           location,
           latitude: weatherData.latitude,
           longitude: weatherData.longitude,
-          current: weatherData.current,
+          current: {
+            ...weatherData.current,
+            temp_min: weatherData.current.temp_min ?? weatherData.current.temp,
+            temp_max: weatherData.current.temp_max ?? weatherData.current.temp
+          },
           forecast: weatherData.forecast
-        }
+        })
       };
 
       // Determine if we're updating an existing record or creating a new one
@@ -160,12 +163,13 @@ export default function Home() {
           body: JSON.stringify(recordData)
         });
 
-        const result = await response.json();
-        
-        if (!result.success) {
-          throw new Error(result.error || 'Failed to update record');
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.message || 'Failed to update record');
         }
 
+        const result = await response.json();
+        
         // Update the records list
         const updatedRecords = records.map(record => 
           record.id === selectedRecord.id ? result.record : record
@@ -186,24 +190,28 @@ export default function Home() {
           body: JSON.stringify(recordData)
         });
 
-        const result = await response.json();
-        
-        if (!result.success) {
-          throw new Error(result.error || 'Failed to save record');
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.message || 'Failed to save record');
         }
 
+        const result = await response.json();
+
         // Add new record to the list
-        setRecords([...records, result.record]);
+        setRecords(prevRecords => [result.record, ...prevRecords]);
         
         toast.success('Record saved successfully');
       }
 
       // Close modal or reset state as needed
       setIsModalOpen(false);
+      
+      // Refresh records
+      fetchRecords();
     } catch (err) {
-      console.error('Failed to save/update record:', err);
-      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
-      toast.error('Failed to save/update record');
+      console.error('Save/Update error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to save/update record');
+      toast.error(err instanceof Error ? err.message : 'Failed to save/update record');
     }
   };
 
@@ -281,11 +289,6 @@ export default function Home() {
       console.error('Delete error:', error);
       throw error;
     }
-  };
-
-  const handleEditRecord = (record: WeatherRecord) => {
-    setSelectedRecord(record);
-    setIsModalOpen(true);
   };
 
   const handleSearch = () => {

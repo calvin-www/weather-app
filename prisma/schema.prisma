@@ -12,18 +12,15 @@ datasource db {
 }
 
 model WeatherRecord {
-  id              Int      @id @default(autoincrement())
-  location        String
-  latitude        Float
-  longitude       Float
-  startDate       DateTime
-  endDate         DateTime
-  temperature_min Float
-  temperature_max Float
-  description     String
-  weatherData     String?  @db.Text
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id          Int      @id @default(autoincrement())
+  location    String
+  latitude    Float
+  longitude   Float
+  startDate   DateTime
+  endDate     DateTime
+  weatherData String   @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@index([location])
   @@index([startDate, endDate])

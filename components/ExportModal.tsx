@@ -8,12 +8,18 @@ import { Select, SelectItem } from '@heroui/select';
 import { downloadFile, ExportFormat, validFormats } from '@/lib/export-utils';
 import { format, parseISO } from 'date-fns';
 import toast from 'react-hot-toast';
-import { WeatherRecord } from '@/types/weather';
+
+interface ExportRecord {
+  id: number;
+  location: string;
+  startDate: string;
+  endDate: string;
+}
 
 interface ExportModalProps {
   isOpen: boolean;
   onClose: () => void;
-  records: Pick<WeatherRecord, 'id' | 'location' | 'startDate' | 'endDate'>[];
+  records: ExportRecord[];
 }
 
 export default function ExportModal({ isOpen, onClose, records }: ExportModalProps) {
