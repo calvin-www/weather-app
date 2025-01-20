@@ -74,7 +74,7 @@ export default function Home() {
   const [error, setError] = useState('');
   const [dateRange, setDateRange] = useState<RangeValue<DateValue>>({
     start: parseDate(new Date().toISOString().split('T')[0]),
-    end: parseDate(addDays(new Date(), 4).toISOString().split('T')[0])
+    end: parseDate(addDays(new Date(), 7).toISOString().split('T')[0])
   });
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { unit, convertTemp } = useTemperature();
@@ -337,38 +337,74 @@ export default function Home() {
     fetchWeather(location, start, end);
   };
 
-  const handleDateRangeChange = (value: RangeValue<DateValue>) => {
-    console.log('Date range changed:', value);
-    
-    // Update the date range state
-    setDateRange(value);
-    
-    // Only fetch weather if both start and end dates are selected
-    if (value.start && value.end) {
-      const startDate = convertFromCalendarDate(value.start);
-      const endDate = convertFromCalendarDate(value.end);
+  const handleDateRangeChange = (value: RangeValue<DateValue> | null) => {
+    // If value is null, reset to default range
+    if (value === null) {
+      const today = new Date();
+      const fiveDaysLater = addDays(today, 7);
       
-      console.log('Fetching weather for dates:', {
-        start: startDate.toISOString(),
-        end: endDate.toISOString()
-      });
+      const defaultRange = {
+        start: parseDate(today.toISOString().split('T')[0]),
+        end: parseDate(fiveDaysLater.toISOString().split('T')[0])
+      };
       
-      // Fetch weather for the selected date range
-      fetchWeather(
-        location, 
-        startDate, 
-        endDate
-      );
+      setDateRange(defaultRange);
+      
+      fetchWeather(location, today, fiveDaysLater);
+      return;
     }
+
+    // Validate the input
+    const today = new Date();
+    const thirtyDaysLater = addDays(today, 30);
+
+    // Ensure start date is not before today
+    const startDate = convertFromCalendarDate(value.start);
+    const endDate = convertFromCalendarDate(value.end);
+
+    // Adjust dates if they're out of acceptable range
+    if (startDate < today) {
+      startDate.setTime(today.getTime());
+    }
+
+    if (endDate > thirtyDaysLater) {
+      endDate.setTime(thirtyDaysLater.getTime());
+    }
+
+    // Ensure end date is not before start date
+    if (endDate < startDate) {
+      endDate.setTime(startDate.getTime());
+    }
+
+    // Recreate the range with validated dates
+    const validatedRange = {
+      start: parseDate(startDate.toISOString().split('T')[0]),
+      end: parseDate(endDate.toISOString().split('T')[0])
+    };
+
+    console.log('Validated date range:', validatedRange);
+
+    // Update the date range state
+    setDateRange(validatedRange);
+    
+    // Fetch weather for the selected date range
+    fetchWeather(
+      location, 
+      startDate, 
+      endDate
+    );
   };
 
   const handleFiveDayForecast = () => {
     const today = new Date();
     const fiveDaysLater = addDays(today, 4);
     
+    const startDate = parseDate(today.toISOString().split('T')[0]);
+    const endDate = parseDate(fiveDaysLater.toISOString().split('T')[0]);
+    
     setDateRange({
-      start: convertToCalendarDate(today),
-      end: convertToCalendarDate(fiveDaysLater)
+      start: startDate,
+      end: endDate
     });
     
     fetchWeather(location, today, fiveDaysLater);
@@ -430,8 +466,6 @@ export default function Home() {
           <DateRangePicker
             value={dateRange}
             onChange={handleDateRangeChange}
-            minDate={convertToCalendarDate(new Date())}
-            maxDate={convertToCalendarDate(addDays(new Date(), 30))}
             className="flex-grow"
           />
           <Button
