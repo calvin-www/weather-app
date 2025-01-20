@@ -1,3 +1,4 @@
+import { ComponentType } from 'react';
 import {
   WiDaySunny,
   WiNightClear,
@@ -17,8 +18,14 @@ import {
   WiNightFog,
 } from 'weather-icons-react';
 
+interface IconProps {
+  size?: number;
+  color?: string;
+  className?: string;
+}
+
 // Map OpenWeatherMap icon codes to Weather Icons components
-export const weatherIconsMap: { [key: string]: any } = {
+export const weatherIconsMap: { [key: string]: ComponentType<IconProps> } = {
   '01d': WiDaySunny,
   '01n': WiNightClear,
   '02d': WiDayCloudy,
