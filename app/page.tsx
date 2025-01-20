@@ -338,13 +338,26 @@ export default function Home() {
   };
 
   const handleDateRangeChange = (value: RangeValue<DateValue>) => {
+    console.log('Date range changed:', value);
+    
+    // Update the date range state
     setDateRange(value);
     
+    // Only fetch weather if both start and end dates are selected
     if (value.start && value.end) {
+      const startDate = convertFromCalendarDate(value.start);
+      const endDate = convertFromCalendarDate(value.end);
+      
+      console.log('Fetching weather for dates:', {
+        start: startDate.toISOString(),
+        end: endDate.toISOString()
+      });
+      
+      // Fetch weather for the selected date range
       fetchWeather(
         location, 
-        convertFromCalendarDate(value.start), 
-        convertFromCalendarDate(value.end)
+        startDate, 
+        endDate
       );
     }
   };
@@ -416,9 +429,9 @@ export default function Home() {
         <div className="flex items-center gap-4 w-full">
           <DateRangePicker
             value={dateRange}
-            // onChange={handleDateRangeChange}
-            // minDate={convertToCalendarDate(new Date())}
-            // maxDate={convertToCalendarDate(addDays(new Date(), 30))}
+            onChange={handleDateRangeChange}
+            minDate={convertToCalendarDate(new Date())}
+            maxDate={convertToCalendarDate(addDays(new Date(), 30))}
             className="flex-grow"
           />
           <Button
