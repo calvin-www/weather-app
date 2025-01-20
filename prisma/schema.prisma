@@ -1,0 +1,31 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["jsonProtocol"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url = env("POSTGRES_PRISMA_URL")
+  directUrl = env("POSTGRES_URL_NON_POOLING")
+}
+
+model WeatherRecord {
+  id              Int      @id @default(autoincrement())
+  location        String
+  latitude        Float
+  longitude       Float
+  startDate       DateTime
+  endDate         DateTime
+  temperature_min Float
+  temperature_max Float
+  description     String
+  weatherData     String?  @db.Text
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([location])
+  @@index([startDate, endDate])
+}
