@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { GoogleMap, LoadScript, Marker } from '@react-google-maps/api';
+import { useJsApiLoader, GoogleMap, Marker } from '@react-google-maps/api';
 
 interface GoogleMapComponentProps {
   latitude: number;
@@ -21,6 +21,18 @@ const GoogleMapComponent: React.FC<GoogleMapComponentProps> = ({
     process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || 
     process.env.GOOGLE_MAPS_API_KEY || 
     'AIzaSyAnBbWcHvMVsJlB8uQqELfyRvt_9nXiloA';  // Fallback to the hardcoded key
+
+  const { isLoaded, loadError } = useJsApiLoader({
+    googleMapsApiKey: apiKey || '',
+    libraries: ['places']
+  });
+
+  useEffect(() => {
+    if (loadError) {
+      console.error('Google Maps script failed to load', loadError);
+      setMapError(`Failed to load Google Maps: ${loadError.message}`);
+    }
+  }, [loadError]);
 
   const mapOptions = {
     disableDefaultUI: true,
@@ -49,20 +61,15 @@ const GoogleMapComponent: React.FC<GoogleMapComponentProps> = ({
   const containerStyle = {
     width: '100%',
     height: '400px',
-    borderRadius: '16px',  // Rounded corners
-    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',  // Subtle shadow
+    borderRadius: '16px',
+    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
     overflow: 'hidden',
-    border: '2px solid #f0f0f0'  // Soft border
+    border: '2px solid #f0f0f0'
   };
 
   const center = {
     lat: latitude,
     lng: longitude
-  };
-
-  const handleMapError = (error: Error) => {
-    console.error('Google Maps load error:', error);
-    setMapError(`Failed to load map: ${error.message}`);
   };
 
   if (!apiKey) {
@@ -78,34 +85,39 @@ const GoogleMapComponent: React.FC<GoogleMapComponentProps> = ({
     );
   }
 
+  if (mapError) {
+    return (
+      <div className="w-full h-[400px] flex items-center justify-center bg-gray-100 text-red-600 rounded-lg">
+        {mapError}
+      </div>
+    );
+  }
+
+  if (!isLoaded) {
+    return (
+      <div className="w-full h-[400px] flex items-center justify-center bg-gray-100 text-gray-600 rounded-lg">
+        Loading map...
+      </div>
+    );
+  }
+
   return (
     <div className="w-full rounded-xl overflow-hidden shadow-lg">
-      {mapError ? (
-        <div className="w-full h-[400px] flex items-center justify-center bg-gray-100 text-red-600 rounded-lg">
-          {mapError}
-        </div>
-      ) : (
-        <LoadScript
-          googleMapsApiKey={apiKey}
-          onError={handleMapError}
-        >
-          <GoogleMap
-            mapContainerStyle={containerStyle}
-            center={center}
-            zoom={10}
-            options={mapOptions}
-          >
-            <Marker 
-              position={center} 
-              title={location}
-              icon={{
-                url: 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png',
-                scaledSize: new window.google.maps.Size(40, 40)
-              }}
-            />
-          </GoogleMap>
-        </LoadScript>
-      )}
+      <GoogleMap
+        mapContainerStyle={containerStyle}
+        center={center}
+        zoom={10}
+        options={mapOptions}
+      >
+        <Marker 
+          position={center} 
+          title={location}
+          icon={{
+            url: 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png',
+            scaledSize: new window.google.maps.Size(40, 40)
+          }}
+        />
+      </GoogleMap>
     </div>
   );
 };

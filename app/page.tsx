@@ -399,32 +399,45 @@ export default function Home() {
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                {/* Weather Details Column */}
-                <div>
-                  <div className="flex items-center gap-4 mt-4">
-                    <img 
-                      src={getWeatherIcon(weatherData.current.icon)} 
-                      alt={weatherData.current.description} 
-                      className="w-24 h-24"
-                    />
-                    <div>
-                      <p className="text-4xl font-bold">{weatherData.current.temp.toFixed(1)}°C</p>
-                      <p className="text-lg capitalize">{weatherData.current.description}</p>
+                {/* Temperature Details */}
+                <div className="flex flex-col justify-center items-center w-full h-full p-6 bg-default-100 dark:bg-default-50/30 rounded-xl">
+                  {/* Current Temperature Section */}
+                  <div className="text-center w-full max-w-md">
+                    <div className="flex items-center justify-center mb-6">
+                      <img 
+                        src={getWeatherIcon(weatherData.current.icon)} 
+                        alt={weatherData.current.description} 
+                        className="w-32 h-32 mr-6"
+                      />
+                      <div>
+                        <h3 className="text-6xl font-bold text-default-900 dark:text-white">
+                          {convertTemp(weatherData.current.temp).toFixed(1)}°{unit === 'celsius' ? 'C' : 'F'}
+                        </h3>
+                        <p className="text-default-600 dark:text-default-300 capitalize text-xl">
+                          {weatherData.current.description}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                  <div className="mt-4 grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-gray-600">Min Temp</p>
-                      <p className="text-blue-600 font-semibold">{weatherData.current.temp_min.toFixed(1)}°C</p>
+
+                    {/* Max Temperature */}
+                    <div className="bg-red-100 dark:bg-red-900/30 p-4 rounded-lg mb-4 w-full">
+                      <p className="text-sm text-red-600 dark:text-red-300">Max Temp</p>
+                      <p className="font-semibold text-red-900 dark:text-red-100 text-xl">
+                        {convertTemp(weatherData.current.temp_max).toFixed(1)}°{unit === 'celsius' ? 'C' : 'F'}
+                      </p>
                     </div>
-                    <div>
-                      <p className="text-gray-600">Max Temp</p>
-                      <p className="text-red-600 font-semibold">{weatherData.current.temp_max.toFixed(1)}°C</p>
+
+                    {/* Min Temperature */}
+                    <div className="bg-blue-100 dark:bg-blue-900/30 p-4 rounded-lg w-full">
+                      <p className="text-sm text-blue-600 dark:text-blue-300">Min Temp</p>
+                      <p className="font-semibold text-blue-900 dark:text-blue-100 text-xl">
+                        {convertTemp(weatherData.current.temp_min).toFixed(1)}°{unit === 'celsius' ? 'C' : 'F'}
+                      </p>
                     </div>
                   </div>
                 </div>
 
-                {/* Google Maps Column */}
+                {/* Map Component */}
                 <div>
                   <GoogleMapComponent 
                     latitude={weatherData.latitude} 
@@ -437,37 +450,39 @@ export default function Home() {
           </Card>
 
           {/* Forecast Section */}
-          {weatherData.forecast && (
-            <Card>
-              <CardBody>
-                <h2 className="text-2xl font-semibold mb-6">{forecastSectionTitle}</h2>
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                  {weatherData.forecast.map((day) => (
-                    <div
-                      key={day.dt}
-                      className="flex flex-col items-center p-4 rounded-lg bg-content1 hover:bg-content2 transition-colors"
-                    >
-                      <p className="font-semibold text-lg">{getDayName(day.date)}</p>
-                      <p className="text-sm text-gray-500">{day.date}</p>
-                      <img
-                        src={getWeatherIcon(day.icon)}
-                        alt={day.description}
-                        className="w-16 h-16 my-2"
-                      />
-                      <div className="flex gap-2 items-center">
-                        <span className="text-lg font-semibold">
-                          {Math.round(convertTemp(day.temp_max))}°
-                        </span>
-                        <span className="text-sm text-gray-500">
-                          {Math.round(convertTemp(day.temp_min))}°
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-600 text-center capitalize">{day.description}</p>
+          <Divider className="my-6" />
+          <h2 className="text-2xl font-semibold mb-4">{forecastSectionTitle}</h2>
+          
+          {weatherData.forecast && weatherData.forecast.length > 0 ? (
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              {weatherData.forecast.map((day, index) => (
+                <Card key={index} className="p-4 text-center">
+                  <CardBody>
+                    <p className="font-semibold">{getDayName(day.date)}</p>
+                    <img 
+                      src={getWeatherIcon(day.icon)} 
+                      alt={day.description} 
+                      className="w-16 h-16 mx-auto my-2"
+                    />
+                    <div className="flex flex-col items-center justify-center">
+                      <p className="text-sm text-default-600 dark:text-default-400">Max Temp</p>
+                      <p className="font-semibold text-default-900 dark:text-default-100 text-lg">
+                        {convertTemp(day.temp_max).toFixed(1)}°{unit === 'celsius' ? 'C' : 'F'}
+                      </p>
+                      <p className="text-sm text-default-600 dark:text-default-400 mt-1">Min Temp</p>
+                      <p className="font-semibold text-default-900 dark:text-default-100">
+                        {convertTemp(day.temp_min).toFixed(1)}°{unit === 'celsius' ? 'C' : 'F'}
+                      </p>
                     </div>
-                  ))}
-                </div>
-              </CardBody>
-            </Card>
+                    <p className="text-xs text-gray-600 mt-1 capitalize">
+                      {day.description}
+                    </p>
+                  </CardBody>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <p className="text-center text-gray-500">No forecast data available</p>
           )}
         </div>
       )}
