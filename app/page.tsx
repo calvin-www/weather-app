@@ -12,6 +12,7 @@ import { useGeolocation } from '@/components/use-geolocation';
 import { format, addDays } from 'date-fns';
 import { parseDate, CalendarDate } from "@internationalized/date";
 import GoogleMapComponent from '@/components/GoogleMap';
+import toast from 'react-hot-toast';
 
 interface WeatherData {
   location: string;
@@ -156,115 +157,131 @@ export default function Home() {
   };
 
   const handleSaveOrUpdateRecord = async () => {
-    if (!weatherData || !location) {
-      console.error('No weather data to save');
-      return;
-    }
-
     try {
-      let response;
-      
-      // Determine if we're saving a new record or updating an existing one
-      if (!selectedRecord) {
-        // Save new record
-        response = await fetch('/api/records', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            location: location,
-            latitude: weatherData.latitude,
-            longitude: weatherData.longitude,
-            startDate: dateRange.start ? new Date(dateRange.start.toString()) : new Date(),
-            endDate: dateRange.end ? new Date(dateRange.end.toString()) : new Date(),
-            weatherData: weatherData
-          })
-        });
-      } else {
-        // Update existing record
-        response = await fetch(`/api/records?id=${selectedRecord.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            startDate: format(convertFromCalendarDate(dateRange.start), 'yyyy-MM-dd'),
-            endDate: format(convertFromCalendarDate(dateRange.end), 'yyyy-MM-dd'),
-            description: weatherData.current.description || '',
-            weatherData: weatherData
-          }),
-        });
+      // Validate required data
+      if (!weatherData || !location) {
+        setError('Weather data and location are required');
+        return;
       }
 
-      const responseData = await response.json();
-      
-      if (!response.ok || !responseData.success) {
-        throw new Error(responseData.error || 'Failed to save/update record');
-      }
+      // Prepare record data
+      const recordData = {
+        location,
+        latitude: weatherData.latitude,
+        longitude: weatherData.longitude,
+        startDate: dateRange.start 
+          ? convertFromCalendarDate(dateRange.start).toISOString() 
+          : new Date().toISOString(),
+        endDate: dateRange.end 
+          ? convertFromCalendarDate(dateRange.end).toISOString() 
+          : new Date().toISOString(),
+        weatherData: {
+          location,
+          latitude: weatherData.latitude,
+          longitude: weatherData.longitude,
+          current: weatherData.current,
+          forecast: weatherData.forecast
+        }
+      };
 
-      console.log(selectedRecord ? 'Record updated' : 'Record saved', 'successfully:', responseData.record);
-      await fetchRecords();
-      
-      // Reset selected record after update
+      // Determine if we're updating an existing record or creating a new one
       if (selectedRecord) {
+        // Update existing record
+        const response = await fetch(`/api/records?id=${selectedRecord.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(recordData)
+        });
+
+        const result = await response.json();
+        
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to update record');
+        }
+
+        // Update the records list
+        const updatedRecords = records.map(record => 
+          record.id === selectedRecord.id ? result.record : record
+        );
+        setRecords(updatedRecords);
+
+        // Reset selected record
         setSelectedRecord(null);
+        
+        toast.success('Record updated successfully');
+      } else {
+        // Create new record
+        const response = await fetch('/api/records', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(recordData)
+        });
+
+        const result = await response.json();
+        
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to save record');
+        }
+
+        // Add new record to the list
+        setRecords([...records, result.record]);
+        
+        toast.success('Record saved successfully');
       }
-      
-      setError('');
+
+      // Close modal or reset state as needed
+      setIsModalOpen(false);
     } catch (err) {
       console.error('Failed to save/update record:', err);
-      setError(err instanceof Error ? err.message : 'Failed to save/update record');
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
+      toast.error('Failed to save/update record');
     }
   };
 
-  const handleDeleteRecord = async (id: number) => {
+  const handleViewRecord = async (record: WeatherRecord) => {
     try {
-      await fetch(`/api/records?id=${id}`, { method: 'DELETE' });
-      await fetchRecords();
-    } catch (err) {
-      console.error('Failed to delete record:', err);
-    }
-  };
+      // Fetch full record details
+      const response = await fetch(`/api/records?id=${record.id}`);
+      const fullRecord = await response.json();
 
-  const handleEditRecord = (record: WeatherRecord) => {
-    setSelectedRecord(record);
-    setIsModalOpen(true);
-  };
+      // Parse the stored weather data
+      const parsedWeatherData = JSON.parse(fullRecord.weatherData);
 
-  const handleViewRecord = (record: WeatherRecord) => {
-    try {
-      // Parse the weatherData JSON string
-      const parsedWeatherData: WeatherData = JSON.parse(record.weatherData || '{}');
-      
-      // Ensure the parsed data matches the WeatherData interface
+      // Prepare formatted weather data
       const formattedWeatherData: WeatherData = {
-        location: record.location,
-        latitude: record.latitude,
-        longitude: record.longitude,
+        location: fullRecord.location,
+        latitude: fullRecord.latitude,
+        longitude: fullRecord.longitude,
         current: {
-          temp: parsedWeatherData.current?.temp || 0,
-          temp_min: parsedWeatherData.current?.temp_min || 0,
-          temp_max: parsedWeatherData.current?.temp_max || 0,
-          description: parsedWeatherData.current?.description || '',
-          icon: parsedWeatherData.current?.icon || ''
+          temp: parsedWeatherData.current.temp,
+          temp_min: parsedWeatherData.current.temp_min,
+          temp_max: parsedWeatherData.current.temp_max,
+          description: parsedWeatherData.current.description,
+          icon: parsedWeatherData.current.icon
         },
-        description: parsedWeatherData.description || record.description || '',
-        forecast: parsedWeatherData.forecast || []
+        forecast: parsedWeatherData.forecast
       };
       
       // Set the parsed weather data 
       setWeatherData(formattedWeatherData);
       
       // Set location from the record
-      setLocation(record.location);
+      setLocation(fullRecord.location);
       
       // Set date range from the record
       setDateRange({
-        start: convertToCalendarDate(new Date(record.startDate)),
-        end: convertToCalendarDate(new Date(record.endDate))
+        start: convertToCalendarDate(new Date(fullRecord.startDate)),
+        end: convertToCalendarDate(new Date(fullRecord.endDate))
       });
       
       // Set the selected record
       setSelectedRecord({
-        ...record,
-        description: formattedWeatherData.description || ''
+        ...fullRecord,
+        description: formattedWeatherData.current.description || ''
       });
       
       // Open the modal
@@ -274,13 +291,43 @@ export default function Home() {
       setError('');
       
       console.log('Viewed record:', {
-        record,
+        record: fullRecord,
         parsedWeatherData: formattedWeatherData
       });
     } catch (err) {
       console.error('Failed to view record:', err);
       setError('Failed to load record details');
+      toast.error('Failed to load record details');
     }
+  };
+
+  const handleDeleteRecord = async (recordId: number) => {
+    try {
+      const response = await fetch(`/api/records?id=${recordId}`, {
+        method: 'DELETE'
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to delete record');
+      }
+
+      // Remove the deleted record from the list
+      const updatedRecords = records.filter(record => record.id !== recordId);
+      setRecords(updatedRecords);
+
+      toast.success('Record deleted successfully');
+    } catch (err) {
+      console.error('Failed to delete record:', err);
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
+      toast.error('Failed to delete record');
+    }
+  };
+
+  const handleEditRecord = (record: WeatherRecord) => {
+    setSelectedRecord(record);
+    setIsModalOpen(true);
   };
 
   const handleSearch = () => {

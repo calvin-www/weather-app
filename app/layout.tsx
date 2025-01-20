@@ -1,7 +1,7 @@
 import "@/styles/globals.css";
 import { Metadata, Viewport } from "next";
 import clsx from "clsx";
-
+import { Toaster } from 'react-hot-toast';
 import { Providers } from "./providers";
 import { fontSans } from "@/config/fonts";
 import { ClientLayout } from "@/components/client-layout";
@@ -38,6 +38,7 @@ export default function RootLayout({
         <Providers themeProps={{ attribute: "class", defaultTheme: "dark" }}>
           <ClientLayout>
             {children}
+            <Toaster position="top-right" />
           </ClientLayout>
         </Providers>
       </body>

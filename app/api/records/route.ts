@@ -110,7 +110,9 @@ export async function PUT(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
+    
     if (!id) {
+      console.error('Update failed: No record ID provided');
       return NextResponse.json(
         { error: 'Record ID is required' },
         { status: 400 }
@@ -118,35 +120,87 @@ export async function PUT(request: Request) {
     }
 
     const data = await request.json();
-    console.log('Updating record', id, 'with data:', data);
-    
-    // Prepare update data
-    const updateData: any = {
-      startDate: new Date(data.startDate),
-      endDate: new Date(data.endDate),
-      description: data.description || ''
-    };
+    console.log('Received update data:', JSON.stringify(data, null, 2));
 
-    // If full weather data is provided, update additional fields
+    // Validate input data
+    if (!data) {
+      console.error('Update failed: No update data provided');
+      return NextResponse.json(
+        { error: 'No update data provided' },
+        { status: 400 }
+      );
+    }
+
+    // Prepare update data with optional fields
+    const updateData: any = {};
+
+    // Update location if provided
+    if (data.location) {
+      updateData.location = data.location;
+    }
+
+    // Update coordinates if provided
+    if (data.latitude != null && data.longitude != null) {
+      updateData.latitude = typeof data.latitude === 'string' 
+        ? parseFloat(data.latitude) 
+        : data.latitude;
+      updateData.longitude = typeof data.longitude === 'string' 
+        ? parseFloat(data.longitude) 
+        : data.longitude;
+    }
+
+    // Update date range if provided
+    if (data.startDate) {
+      updateData.startDate = new Date(data.startDate);
+    }
+    if (data.endDate) {
+      updateData.endDate = new Date(data.endDate);
+    }
+
+    // Update weather data if provided
     if (data.weatherData) {
-      updateData.temperature_min = data.weatherData.forecast.reduce((min: number, day: any) => 
-        Math.min(min, day.temp_min), Infinity);
-      updateData.temperature_max = data.weatherData.forecast.reduce((max: number, day: any) => 
-        Math.max(max, day.temp_max), -Infinity);
+      // Calculate min and max temperatures from forecast
+      if (data.weatherData.forecast && data.weatherData.forecast.length > 0) {
+        updateData.temperature_min = data.weatherData.forecast.reduce(
+          (min: number, day: any) => Math.min(min, day.temp_min), 
+          Infinity
+        );
+        updateData.temperature_max = data.weatherData.forecast.reduce(
+          (max: number, day: any) => Math.max(max, day.temp_max), 
+          -Infinity
+        );
+      }
+
+      // Update description
+      if (data.weatherData.current?.description) {
+        updateData.description = data.weatherData.current.description;
+      }
+
+      // Store full weather data as JSON
       updateData.weatherData = JSON.stringify(data.weatherData);
     }
 
+    console.log('Prepared update data:', JSON.stringify(updateData, null, 2));
+
+    // Perform the update
     const record = await db.weatherRecord.update({
       where: { id: parseInt(id) },
       data: updateData
     });
     
-    console.log('Updated record:', record);
-    return NextResponse.json({ success: true, record });
+    console.log('Successfully updated record:', JSON.stringify(record, null, 2));
+    return NextResponse.json({ 
+      success: true, 
+      record,
+      message: 'Record updated successfully' 
+    });
   } catch (error) {
     console.error('Failed to update record:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to update record' },
+      { 
+        error: error instanceof Error ? error.message : 'Failed to update record',
+        details: error instanceof Error ? error.stack : null
+      },
       { status: 500 }
     );
   }
@@ -173,7 +227,10 @@ export async function DELETE(request: Request) {
   } catch (error) {
     console.error('Failed to delete record:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to delete record' },
+      { 
+        error: error instanceof Error ? error.message : 'Failed to delete record',
+        details: error instanceof Error ? error.stack : null
+      },
       { status: 500 }
     );
   }
