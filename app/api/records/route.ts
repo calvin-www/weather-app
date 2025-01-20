@@ -1,24 +1,5 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-
-// Singleton pattern for Prisma client
-const prismaClientSingleton = () => {
-  return new PrismaClient({
-    log: ['query', 'error', 'warn'],
-  });
-};
-
-type GlobalThisWithPrisma = typeof globalThis & {
-  prisma?: ReturnType<typeof prismaClientSingleton>;
-};
-
-const globalForPrisma = global as GlobalThisWithPrisma;
-
-const db = globalForPrisma.prisma ?? prismaClientSingleton();
-
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db;
-
-export { db };
+import { db } from '../../../lib/prisma';
 
 // READ
 export async function GET(request: Request) {
