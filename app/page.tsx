@@ -10,6 +10,8 @@ import { format, addDays } from 'date-fns';
 import { parseDate, CalendarDate } from '@internationalized/date';
 import toast from 'react-hot-toast';
 
+import './weather-icons.css';
+import { weatherIconsMap, weatherIconColors } from '@/lib/weather-icons-map';
 import { useTemperature } from '@/contexts/temperature-unit';
 import { useGeolocation } from '@/components/use-geolocation';
 import GoogleMapComponent from '@/components/GoogleMap';
@@ -17,13 +19,23 @@ import RecordsTable from '@/components/RecordsTable';
 import { WeatherData, WeatherRecord } from '@/types/weather';
 import ExportModal from '@/components/ExportModal';
 
-const getWeatherIcon = (iconCode: string) => {
-  return `https://openweathermap.org/img/wn/${iconCode}@2x.png`;
+const getWeatherIcon = (iconCode: string, size: 'large' | 'small' = 'small') => {
+  const IconComponent = weatherIconsMap[iconCode];
+  const color = weatherIconColors[iconCode];
+  
+  if (!IconComponent) {
+    console.warn(`No icon found for code: ${iconCode}`);
+    return null;
+  }
+  
+  const iconSize = size === 'large' ? (iconCode.includes('d') ? 128 : 96) : (iconCode.includes('d') ? 64 : 48);
+  return <IconComponent size={iconSize} color={color} />;
 };
 
 const getDayName = (dateStr: string) => {
   const date = new Date(dateStr);
-
+  // Add one day to fix the off-by-one issue
+  date.setDate(date.getDate() + 1);
   return format(date, 'EEEE');
 };
 
@@ -59,8 +71,7 @@ export default function Home() {
 
   const convertFromCalendarDate = (calendarDate: DateValue): Date => {
     const [year, month, day] = calendarDate.toString().split('-').map(Number);
-
-    return new Date(year, month - 1, day); // month is 0-based in JavaScript Date
+    return new Date(year, month - 1, day);
   };
 
   const fetchWeather = async (searchLocation?: string, start?: Date, end?: Date) => {
@@ -328,6 +339,7 @@ export default function Home() {
       return;
     }
 
+    // Add one day to both dates to fix the off-by-one issue
     const startDate = convertFromCalendarDate(value.start);
     const endDate = convertFromCalendarDate(value.end);
 
@@ -390,7 +402,7 @@ export default function Home() {
   const currentWeatherTitle = useMemo(() => {
     if (!weatherData) return '';
 
-    const earliestDate = dateRange.start ? new Date(dateRange.start.toString()) : new Date();
+    const earliestDate = dateRange.start ? addDays(new Date(dateRange.start.toString()), 1) : new Date();
 
     return `Weather in ${weatherData.location} on ${format(earliestDate, 'EEEE, MMMM d, yyyy')}`;
   }, [weatherData, dateRange]);
@@ -398,8 +410,8 @@ export default function Home() {
   const forecastSectionTitle = useMemo(() => {
     if (!dateRange.start || !dateRange.end) return 'Range';
 
-    const startDate = new Date(dateRange.start.toString());
-    const endDate = new Date(dateRange.end.toString());
+    const startDate = addDays(new Date(dateRange.start.toString()), 1);
+    const endDate = addDays(new Date(dateRange.end.toString()), 1);
 
     return `${format(startDate, 'MMMM d, yyyy')} - ${format(endDate, 'MMMM d, yyyy')}`;
   }, [dateRange]);
@@ -466,11 +478,9 @@ export default function Home() {
                   {/* Current Temperature Section */}
                   <div className="text-center w-full max-w-md">
                     <div className="flex items-center justify-center mb-6">
-                      <img
-                        alt={weatherData.current.description}
-                        className="w-32 h-32 mr-6"
-                        src={getWeatherIcon(weatherData.current.icon)}
-                      />
+                      <div className="flex-shrink-0">
+                        {getWeatherIcon(weatherData.current.icon, 'large')}
+                      </div>
                       <div>
                         <h3 className="text-6xl font-bold text-default-900 dark:text-white">
                           {convertTemp(weatherData.current.temp).toFixed(1)}°
@@ -522,13 +532,11 @@ export default function Home() {
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               {weatherData.forecast.map((day, index) => (
                 <Card key={index} className="p-4 text-center">
-                  <CardBody>
+                  <CardBody className="flex flex-col items-center justify-between h-full">
                     <p className="font-semibold">{getDayName(day.date)}</p>
-                    <img
-                      alt={day.description}
-                      className="w-16 h-16 mx-auto my-2"
-                      src={getWeatherIcon(day.icon)}
-                    />
+                    <div className="flex-grow flex items-center justify-center my-2">
+                      {getWeatherIcon(day.icon)}
+                    </div>
                     <div className="flex flex-col items-center justify-center">
                       <p className="text-sm text-default-600 dark:text-default-400">Max Temp</p>
                       <p className="font-semibold text-default-900 dark:text-default-100 text-lg">

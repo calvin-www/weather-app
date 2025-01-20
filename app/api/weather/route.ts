@@ -340,6 +340,10 @@ export async function GET(request: Request) {
       const startDate = new Date(startDateStr);
       const endDate = new Date(endDateStr);
 
+      // Add one day to both dates to fix the off-by-one issue
+      startDate.setDate(startDate.getDate() + 1);
+      endDate.setDate(endDate.getDate() + 1);
+
       const historicalData = await fetchHistoricalWeather(lat, lon, startDate, endDate);
       const processedData = processHistoricalData(historicalData);
 
