@@ -9,7 +9,6 @@ import { Table, TableHeader, TableBody, TableColumn, TableRow, TableCell } from 
 import { DateRangePicker, RangeValue, DateValue } from '@heroui/react';
 import { useTemperature } from '@/contexts/temperature-unit';
 import { useGeolocation } from '@/components/use-geolocation';
-import { RecordModal } from '@/components/record-modal';
 import { format, addDays } from 'date-fns';
 import { parseDate, CalendarDate } from "@internationalized/date";
 import GoogleMapComponent from '@/components/GoogleMap';
@@ -25,6 +24,11 @@ interface WeatherData {
     description: string;
     icon: string;
   };
+  temp?: number;
+  temp_min?: number;
+  temp_max?: number;
+  description?: string;
+  icon?: string;
   forecast: Array<{
     dt: number;
     date: string;
@@ -33,6 +37,8 @@ interface WeatherData {
     description: string;
     icon: string;
   }>;
+  dt?: number;
+  date?: string;
 }
 
 interface WeatherRecord {
@@ -46,7 +52,7 @@ interface WeatherRecord {
   tempMax: number;
   description: string;
   createdAt: string;
-  weatherData: WeatherData;
+  weatherData: string; 
 }
 
 const getWeatherIcon = (iconCode: string) => {
@@ -225,10 +231,26 @@ export default function Home() {
   const handleViewRecord = (record: WeatherRecord) => {
     try {
       // Parse the weatherData JSON string
-      const parsedWeatherData = JSON.parse(record.weatherData || '{}');
+      const parsedWeatherData: WeatherData = JSON.parse(record.weatherData || '{}');
+      
+      // Ensure the parsed data matches the WeatherData interface
+      const formattedWeatherData: WeatherData = {
+        location: record.location,
+        latitude: record.latitude,
+        longitude: record.longitude,
+        current: {
+          temp: parsedWeatherData.current?.temp || 0,
+          temp_min: parsedWeatherData.current?.temp_min || 0,
+          temp_max: parsedWeatherData.current?.temp_max || 0,
+          description: parsedWeatherData.current?.description || '',
+          icon: parsedWeatherData.current?.icon || ''
+        },
+        description: parsedWeatherData.description || record.description || '',
+        forecast: parsedWeatherData.forecast || []
+      };
       
       // Set the parsed weather data 
-      setWeatherData(parsedWeatherData);
+      setWeatherData(formattedWeatherData);
       
       // Set location from the record
       setLocation(record.location);
@@ -240,14 +262,20 @@ export default function Home() {
       });
       
       // Set the selected record
-      setSelectedRecord(record);
+      setSelectedRecord({
+        ...record,
+        description: formattedWeatherData.description || ''
+      });
+      
+      // Open the modal
+      setIsModalOpen(true);
       
       // Clear any previous errors
       setError('');
       
       console.log('Viewed record:', {
         record,
-        parsedWeatherData
+        parsedWeatherData: formattedWeatherData
       });
     } catch (err) {
       console.error('Failed to view record:', err);
@@ -501,16 +529,6 @@ export default function Home() {
           </CardBody>
         </Card>
       )}
-
-      <RecordModal
-        isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false);
-          setSelectedRecord(null);
-        }}
-        record={selectedRecord || undefined}
-        onSave={handleSaveOrUpdateRecord}
-      />
     </div>
   );
 }
