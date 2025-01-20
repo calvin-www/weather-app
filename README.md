@@ -1,53 +1,75 @@
-# Next.js & HeroUI Template
+# Weather App - PM Accelerator Tech Assessment
 
-This is a template for creating applications using Next.js 14 (app directory) and HeroUI (v2).
+## Project Overview
+This Weather App is a comprehensive solution developed for the Product Manager Accelerator (PMA) Software Engineer Intern Tech Assessment. The application provides real-time weather information with advanced features including location-based forecasting, historical weather data retrieval, and database persistence.
 
-[Try it on CodeSandbox](https://githubbox.com/heroui-inc/heroui/next-app-template)
+## 🌟 Features
 
-## Technologies Used
+### Tech Assessment 1
+- 🌍 Location Input Support
+  - Zip Codes
+  - GPS Coordinates
+  - City/Town Names
+  - Landmarks
+- 🌡️ Current Weather Display
+- 🗓️ 5-Day Weather Forecast
+- 📍 Geolocation Support
 
-- [Next.js 14](https://nextjs.org/docs/getting-started)
-- [HeroUI v2](https://heroui.com/)
-- [Tailwind CSS](https://tailwindcss.com/)
-- [Tailwind Variants](https://tailwind-variants.org)
-- [TypeScript](https://www.typescriptlang.org/)
-- [Framer Motion](https://www.framer.com/motion/)
-- [next-themes](https://github.com/pacocoursey/next-themes)
+### Tech Assessment 2
+- 💾 Full CRUD Operations
+  - Create weather records
+  - Read historical weather data
+  - Update existing records
+  - Delete weather records
+- 🌐 Multiple API Integrations
+  - OpenWeatherMap
+  - Google Maps Geocoding
+- 📊 Comprehensive Weather Data Tracking
 
-## How to Use
+## 🛠 Tech Stack
+- **Frontend**: Next.js 14 (App Router)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **Database**: PostgreSQL (Neon Serverless)
+- **ORM**: Prisma
+- **APIs**:
+  - OpenWeatherMap
+  - Google Maps Geocoding
 
-### Use the template with create-next-app
+## 🚀 Getting Started
 
-To create a new project based on this template using `create-next-app`, run the following command:
+### Prerequisites
+- Node.js (v18+)
+- npm/yarn/pnpm
+- API Keys:
+  - OpenWeatherMap
+  - Google Maps
 
+### Installation
+1. Clone the repository
 ```bash
-npx create-next-app -e https://github.com/heroui-inc/next-app-template
+git clone https://github.com/calvin-www/weather-app.git
+cd weather-app
 ```
 
-### Install dependencies
-
-You can use one of them `npm`, `yarn`, `pnpm`, `bun`, Example using `npm`:
-
+2. Install dependencies
 ```bash
 npm install
 ```
 
-### Run the development server
+3. Create a `.env` file with the following variables:
+```
+OPENWEATHER_API_KEY=your_openweather_api_key
+GOOGLE_MAPS_API_KEY=your_google_maps_api_key
+DATABASE_URL=your_postgresql_connection_string
+```
 
+4. Run database migrations
+```bash
+npx prisma migrate dev
+```
+
+5. Start the development server
 ```bash
 npm run dev
 ```
-
-### Setup pnpm (optional)
-
-If you are using `pnpm`, you need to add the following code to your `.npmrc` file:
-
-```bash
-public-hoist-pattern[]=*@heroui/*
-```
-
-After modifying the `.npmrc` file, you need to run `pnpm install` again to ensure that the dependencies are installed correctly.
-
-## License
-
-Licensed under the [MIT license](https://github.com/heroui-inc/next-app-template/blob/main/LICENSE).

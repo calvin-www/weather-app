@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '../../../lib/prisma';
+import { exportFormats, exportMimeTypes, ExportFormat, validFormats } from '../../../lib/export-utils';
 
 // READ
 export async function GET(request: Request) {
@@ -39,9 +40,40 @@ export async function GET(request: Request) {
   }
 }
 
-// CREATE
+// EXPORT
 export async function POST(request: Request) {
   try {
+    const { action, recordIds, format } = await request.json();
+
+    if (action === 'export') {
+      if (!validFormats.includes(format)) {
+        return NextResponse.json(
+          { error: 'Invalid export format' },
+          { status: 400 }
+        );
+      }
+
+      const exportFormat = format as ExportFormat;
+
+      // Fetch selected records
+      const records = await db.weatherRecord.findMany({
+        where: {
+          id: { in: recordIds.map((id: string) => parseInt(id)) }
+        }
+      });
+
+      // Convert to selected format using properly typed function
+      const exportContent = exportFormats[exportFormat](records);
+
+      // Return export data with properly typed mime type
+      return NextResponse.json({
+        content: exportContent,
+        mimeType: exportMimeTypes[exportFormat],
+        filename: `weather_records_export_${exportFormat}`
+      });
+    }
+
+    // Existing POST logic for creating records
     const data = await request.json();
     console.log('Creating new record with data:', data);
     

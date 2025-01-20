@@ -5,7 +5,6 @@ import { Input } from '@heroui/input';
 import { Button } from '@heroui/button';
 import { Card, CardBody } from '@heroui/card';
 import { Divider } from '@heroui/divider';
-import { Table, TableHeader, TableBody, TableColumn, TableRow, TableCell } from '@heroui/table';
 import { DateRangePicker, RangeValue, DateValue } from '@heroui/react';
 import { useTemperature } from '@/contexts/temperature-unit';
 import { useGeolocation } from '@/components/use-geolocation';
@@ -13,48 +12,10 @@ import { format, addDays } from 'date-fns';
 import { parseDate, CalendarDate } from "@internationalized/date";
 import GoogleMapComponent from '@/components/GoogleMap';
 import toast from 'react-hot-toast';
-
-interface WeatherData {
-  location: string;
-  latitude: number;
-  longitude: number;
-  current: {
-    temp: number;
-    temp_min: number;
-    temp_max: number;
-    description: string;
-    icon: string;
-  };
-  temp?: number;
-  temp_min?: number;
-  temp_max?: number;
-  description?: string;
-  icon?: string;
-  forecast: Array<{
-    dt: number;
-    date: string;
-    temp_min: number;
-    temp_max: number;
-    description: string;
-    icon: string;
-  }>;
-  dt?: number;
-  date?: string;
-}
-
-interface WeatherRecord {
-  id: number;
-  location: string;
-  latitude: number;
-  longitude: number;
-  startDate: string;
-  endDate: string;
-  tempMin: number;
-  tempMax: number;
-  description: string;
-  createdAt: string;
-  weatherData: string; 
-}
+import RecordsTable from '@/components/RecordsTable';
+import { WeatherData, WeatherRecord } from '@/types/weather';
+import ExportModal from '@/components/ExportModal';
+import { FileDown } from 'lucide-react';
 
 const getWeatherIcon = (iconCode: string) => {
   return `https://openweathermap.org/img/wn/${iconCode}@2x.png`;
@@ -68,15 +29,16 @@ const getDayName = (dateStr: string) => {
 export default function Home() {
   const [location, setLocation] = useState('');
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [records, setRecords] = useState<WeatherRecord[]>([]);
   const [selectedRecord, setSelectedRecord] = useState<WeatherRecord | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
   const [dateRange, setDateRange] = useState<RangeValue<DateValue>>({
     start: parseDate(new Date().toISOString().split('T')[0]),
     end: parseDate(addDays(new Date(), 7).toISOString().split('T')[0])
   });
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const { unit, convertTemp } = useTemperature();
   const geolocation = useGeolocation();
 
@@ -94,7 +56,8 @@ export default function Home() {
   };
 
   const convertFromCalendarDate = (calendarDate: DateValue): Date => {
-    return new Date(calendarDate.toString());
+    const [year, month, day] = calendarDate.toString().split('-').map(Number);
+    return new Date(year, month - 1, day); // month is 0-based in JavaScript Date
   };
 
   const fetchWeather = async (
@@ -104,7 +67,7 @@ export default function Home() {
   ) => {
     try {
       setLoading(true);
-      setError('');
+      setError(null);
 
       const params = new URLSearchParams();
       
@@ -128,6 +91,8 @@ export default function Home() {
         // Default to current mode
         params.append('mode', 'current');
       }
+
+      console.log('Fetching weather with params:', Object.fromEntries(params.entries()));
 
       const response = await fetch(`/api/weather?${params.toString()}`);
       const data = await response.json();
@@ -288,7 +253,7 @@ export default function Home() {
       setIsModalOpen(true);
       
       // Clear any previous errors
-      setError('');
+      setError(null);
       
       console.log('Viewed record:', {
         record: fullRecord,
@@ -301,27 +266,20 @@ export default function Home() {
     }
   };
 
-  const handleDeleteRecord = async (recordId: number) => {
+  const handleDeleteRecord = async (id: number) => {
     try {
-      const response = await fetch(`/api/records?id=${recordId}`, {
+      const response = await fetch(`/api/records?id=${id}`, {
         method: 'DELETE'
       });
 
-      const result = await response.json();
-
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to delete record');
+      if (!response.ok) {
+        throw new Error('Failed to delete record');
       }
 
-      // Remove the deleted record from the list
-      const updatedRecords = records.filter(record => record.id !== recordId);
-      setRecords(updatedRecords);
-
-      toast.success('Record deleted successfully');
-    } catch (err) {
-      console.error('Failed to delete record:', err);
-      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
-      toast.error('Failed to delete record');
+      setRecords(prevRecords => prevRecords.filter(record => record.id !== id));
+    } catch (error) {
+      console.error('Delete error:', error);
+      throw error;
     }
   };
 
@@ -331,76 +289,56 @@ export default function Home() {
   };
 
   const handleSearch = () => {
-    const start = dateRange.start ? convertFromCalendarDate(dateRange.start) : undefined;
-    const end = dateRange.end ? convertFromCalendarDate(dateRange.end) : undefined;
+    if (!dateRange.start || !dateRange.end) {
+      fetchWeather(location);
+      return;
+    }
+
+    const start = convertFromCalendarDate(dateRange.start);
+    const end = convertFromCalendarDate(dateRange.end);
     
+    console.log('Searching with dates:', { start, end });
     fetchWeather(location, start, end);
   };
 
   const handleDateRangeChange = (value: RangeValue<DateValue> | null) => {
-    // If value is null, reset to default range
-    if (value === null) {
+    if (!value || !value.start || !value.end) {
       const today = new Date();
       const fiveDaysLater = addDays(today, 7);
       
       const defaultRange = {
-        start: parseDate(today.toISOString().split('T')[0]),
-        end: parseDate(fiveDaysLater.toISOString().split('T')[0])
+        start: convertToCalendarDate(today),
+        end: convertToCalendarDate(fiveDaysLater)
       };
       
       setDateRange(defaultRange);
-      
       fetchWeather(location, today, fiveDaysLater);
       return;
     }
 
-    // Validate the input
-    const today = new Date();
-    const thirtyDaysLater = addDays(today, 30);
-
-    // Ensure start date is not before today
     const startDate = convertFromCalendarDate(value.start);
     const endDate = convertFromCalendarDate(value.end);
 
-    // Adjust dates if they're out of acceptable range
-    if (startDate < today) {
-      startDate.setTime(today.getTime());
-    }
+    console.log('Date range changed:', {
+      start: startDate.toISOString(),
+      end: endDate.toISOString()
+    });
 
-    if (endDate > thirtyDaysLater) {
-      endDate.setTime(thirtyDaysLater.getTime());
-    }
-
-    // Ensure end date is not before start date
-    if (endDate < startDate) {
-      endDate.setTime(startDate.getTime());
-    }
-
-    // Recreate the range with validated dates
-    const validatedRange = {
-      start: parseDate(startDate.toISOString().split('T')[0]),
-      end: parseDate(endDate.toISOString().split('T')[0])
-    };
-
-    console.log('Validated date range:', validatedRange);
-
-    // Update the date range state
-    setDateRange(validatedRange);
+    // Don't modify the dates, just use them as selected
+    setDateRange({
+      start: value.start,
+      end: value.end
+    });
     
-    // Fetch weather for the selected date range
-    fetchWeather(
-      location, 
-      startDate, 
-      endDate
-    );
+    fetchWeather(location, startDate, endDate);
   };
 
   const handleFiveDayForecast = () => {
     const today = new Date();
-    const fiveDaysLater = addDays(today, 4);
+    const fiveDaysLater = addDays(today, 4); // 5 days including today
     
-    const startDate = parseDate(today.toISOString().split('T')[0]);
-    const endDate = parseDate(fiveDaysLater.toISOString().split('T')[0]);
+    const startDate = convertToCalendarDate(today);
+    const endDate = convertToCalendarDate(fiveDaysLater);
     
     setDateRange({
       start: startDate,
@@ -440,7 +378,7 @@ export default function Home() {
   }, [dateRange]);
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto p-4">
       <h1 className="text-4xl font-bold text-center mb-8">{currentWeatherTitle}</h1>
       
       {/* Search and Date Range Section */}
@@ -466,6 +404,11 @@ export default function Home() {
           <DateRangePicker
             value={dateRange}
             onChange={handleDateRangeChange}
+            maxValue={convertToCalendarDate(addDays(new Date(), 30))}
+            defaultValue={{
+              start: convertToCalendarDate(new Date()),
+              end: convertToCalendarDate(addDays(new Date(), 7))
+            }}
             className="flex-grow"
           />
           <Button
@@ -596,48 +539,23 @@ export default function Home() {
       <Divider className="my-8" />
 
       {/* Records Table */}
-      {records.length > 0 && (
-        <Card className="mt-8">
-          <CardBody>
-            <h2 className="text-2xl font-semibold mb-6">Saved Weather Records</h2>
-            <Table aria-label="Weather Records">
-              <TableHeader>
-                <TableColumn>Location</TableColumn>
-                <TableColumn>Start Date</TableColumn>
-                <TableColumn>End Date</TableColumn>
-                <TableColumn>Actions</TableColumn>
-              </TableHeader>
-              <TableBody>
-                {records.map((record) => (
-                  <TableRow key={record.id}>
-                    <TableCell>{record.location}</TableCell>
-                    <TableCell>{format(new Date(record.startDate), 'MMMM d, yyyy')}</TableCell>
-                    <TableCell>{format(new Date(record.endDate), 'MMMM d, yyyy')}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button 
-                          color="primary" 
-                          size="sm" 
-                          onClick={() => handleViewRecord(record)}
-                        >
-                          View
-                        </Button>
-                        <Button 
-                          color="danger" 
-                          size="sm" 
-                          onClick={() => handleDeleteRecord(record.id)}
-                        >
-                          Delete
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardBody>
-        </Card>
-      )}
+      <RecordsTable 
+        records={records}
+        onDelete={handleDeleteRecord}
+        onView={handleViewRecord}
+      />
+      
+      {/* Export Modal */}
+      <ExportModal 
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        records={records.map(record => ({
+          id: record.id,
+          location: record.location,
+          startDate: record.startDate,
+          endDate: record.endDate
+        }))}
+      />
     </div>
   );
 }
