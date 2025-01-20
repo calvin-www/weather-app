@@ -69,8 +69,8 @@ export default function ExportModal({ isOpen, onClose, records }: ExportModalPro
         toast.error('Export failed');
       }
     } catch (error) {
-      console.error('Export error:', error);
-      toast.error('An error occurred during export');
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred during export';
+      toast.error(errorMessage);
     }
   };
 
@@ -107,8 +107,9 @@ export default function ExportModal({ isOpen, onClose, records }: ExportModalPro
               ))}
             </div>
             <div className="mt-4">
-              <label className="block mb-2">Export Format</label>
+              <label htmlFor="export-format" className="block mb-2">Export Format</label>
               <Select
+                id="export-format"
                 selectedKeys={[exportFormat]}
                 onSelectionChange={(keys) => {
                   const selected = Array.from(keys)[0] as ExportFormat;
