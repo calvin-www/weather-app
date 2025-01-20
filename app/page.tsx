@@ -6,12 +6,13 @@ import { Button } from '@heroui/button';
 import { Card, CardBody } from '@heroui/card';
 import { Divider } from '@heroui/divider';
 import { DateRangePicker, RangeValue, DateValue } from '@heroui/react';
+import { format, addDays } from 'date-fns';
+import { parseDate, CalendarDate } from '@internationalized/date';
+import toast from 'react-hot-toast';
+
 import { useTemperature } from '@/contexts/temperature-unit';
 import { useGeolocation } from '@/components/use-geolocation';
-import { format, addDays } from 'date-fns';
-import { parseDate, CalendarDate } from "@internationalized/date";
 import GoogleMapComponent from '@/components/GoogleMap';
-import toast from 'react-hot-toast';
 import RecordsTable from '@/components/RecordsTable';
 import { WeatherData, WeatherRecord } from '@/types/weather';
 import ExportModal from '@/components/ExportModal';
@@ -22,6 +23,7 @@ const getWeatherIcon = (iconCode: string) => {
 
 const getDayName = (dateStr: string) => {
   const date = new Date(dateStr);
+
   return format(date, 'EEEE');
 };
 
@@ -34,7 +36,7 @@ export default function Home() {
   const [selectedRecord, setSelectedRecord] = useState<WeatherRecord | null>(null);
   const [dateRange, setDateRange] = useState<RangeValue<DateValue>>({
     start: parseDate(new Date().toISOString().split('T')[0]),
-    end: parseDate(addDays(new Date(), 7).toISOString().split('T')[0])
+    end: parseDate(addDays(new Date(), 7).toISOString().split('T')[0]),
   });
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
@@ -46,6 +48,7 @@ export default function Home() {
     if (geolocation.location) {
       // Explicitly convert to coordinate string
       const locationString = `${geolocation.location.latitude},${geolocation.location.longitude}`;
+
       fetchWeather(locationString);
     }
   }, [geolocation.location]);
@@ -56,27 +59,26 @@ export default function Home() {
 
   const convertFromCalendarDate = (calendarDate: DateValue): Date => {
     const [year, month, day] = calendarDate.toString().split('-').map(Number);
+
     return new Date(year, month - 1, day); // month is 0-based in JavaScript Date
   };
 
-  const fetchWeather = async (
-    searchLocation?: string, 
-    start?: Date, 
-    end?: Date
-  ) => {
+  const fetchWeather = async (searchLocation?: string, start?: Date, end?: Date) => {
     try {
       setLoading(true);
       setError(null);
 
       const params = new URLSearchParams();
-      
+
       // Use the provided search location or default to geolocation
-      params.append('location', searchLocation || 
-        (geolocation.location 
-          ? `${geolocation.location.latitude},${geolocation.location.longitude}` 
-          : '')
+      params.append(
+        'location',
+        searchLocation ||
+          (geolocation.location
+            ? `${geolocation.location.latitude},${geolocation.location.longitude}`
+            : '')
       );
-      
+
       // Determine mode based on date range
       if (start && end) {
         // If dates are more than 5 days apart or in the past, use range mode
@@ -114,6 +116,7 @@ export default function Home() {
     try {
       const response = await fetch('/api/records');
       const data = await response.json();
+
       setRecords(data);
     } catch (err) {
       console.error('Failed to fetch records:', err);
@@ -125,6 +128,7 @@ export default function Home() {
       // Validate required data
       if (!weatherData || !location) {
         setError('Weather data and location are required');
+
         return;
       }
 
@@ -133,11 +137,11 @@ export default function Home() {
         location,
         latitude: weatherData.latitude,
         longitude: weatherData.longitude,
-        startDate: dateRange.start 
-          ? convertFromCalendarDate(dateRange.start).toISOString() 
+        startDate: dateRange.start
+          ? convertFromCalendarDate(dateRange.start).toISOString()
           : new Date().toISOString(),
-        endDate: dateRange.end 
-          ? convertFromCalendarDate(dateRange.end).toISOString() 
+        endDate: dateRange.end
+          ? convertFromCalendarDate(dateRange.end).toISOString()
           : new Date().toISOString(),
         weatherData: JSON.stringify({
           location,
@@ -146,10 +150,10 @@ export default function Home() {
           current: {
             ...weatherData.current,
             temp_min: weatherData.current.temp_min ?? weatherData.current.temp,
-            temp_max: weatherData.current.temp_max ?? weatherData.current.temp
+            temp_max: weatherData.current.temp_max ?? weatherData.current.temp,
           },
-          forecast: weatherData.forecast
-        })
+          forecast: weatherData.forecast,
+        }),
       };
 
       // Determine if we're updating an existing record or creating a new one
@@ -160,25 +164,27 @@ export default function Home() {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(recordData)
+          body: JSON.stringify(recordData),
         });
 
         if (!response.ok) {
           const error = await response.json();
+
           throw new Error(error.message || 'Failed to update record');
         }
 
         const result = await response.json();
-        
+
         // Update the records list
-        const updatedRecords = records.map(record => 
+        const updatedRecords = records.map((record) =>
           record.id === selectedRecord.id ? result.record : record
         );
+
         setRecords(updatedRecords);
 
         // Reset selected record
         setSelectedRecord(null);
-        
+
         toast.success('Record updated successfully');
       } else {
         // Create new record
@@ -187,25 +193,26 @@ export default function Home() {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(recordData)
+          body: JSON.stringify(recordData),
         });
 
         if (!response.ok) {
           const error = await response.json();
+
           throw new Error(error.message || 'Failed to save record');
         }
 
         const result = await response.json();
 
         // Add new record to the list
-        setRecords(prevRecords => [result.record, ...prevRecords]);
-        
+        setRecords((prevRecords) => [result.record, ...prevRecords]);
+
         toast.success('Record saved successfully');
       }
 
       // Close modal or reset state as needed
       setIsModalOpen(false);
-      
+
       // Refresh records
       fetchRecords();
     } catch (err) {
@@ -234,38 +241,38 @@ export default function Home() {
           temp_min: parsedWeatherData.current.temp_min,
           temp_max: parsedWeatherData.current.temp_max,
           description: parsedWeatherData.current.description,
-          icon: parsedWeatherData.current.icon
+          icon: parsedWeatherData.current.icon,
         },
-        forecast: parsedWeatherData.forecast
+        forecast: parsedWeatherData.forecast,
       };
-      
-      // Set the parsed weather data 
+
+      // Set the parsed weather data
       setWeatherData(formattedWeatherData);
-      
+
       // Set location from the record
       setLocation(fullRecord.location);
-      
+
       // Set date range from the record
       setDateRange({
         start: convertToCalendarDate(new Date(fullRecord.startDate)),
-        end: convertToCalendarDate(new Date(fullRecord.endDate))
+        end: convertToCalendarDate(new Date(fullRecord.endDate)),
       });
-      
+
       // Set the selected record
       setSelectedRecord({
         ...fullRecord,
-        description: formattedWeatherData.current.description || ''
+        description: formattedWeatherData.current.description || '',
       });
-      
+
       // Open the modal
       setIsModalOpen(true);
-      
+
       // Clear any previous errors
       setError(null);
-      
+
       console.log('Viewed record:', {
         record: fullRecord,
-        parsedWeatherData: formattedWeatherData
+        parsedWeatherData: formattedWeatherData,
       });
     } catch (err) {
       console.error('Failed to view record:', err);
@@ -277,14 +284,14 @@ export default function Home() {
   const handleDeleteRecord = async (id: number) => {
     try {
       const response = await fetch(`/api/records?id=${id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
       });
 
       if (!response.ok) {
         throw new Error('Failed to delete record');
       }
 
-      setRecords(prevRecords => prevRecords.filter(record => record.id !== id));
+      setRecords((prevRecords) => prevRecords.filter((record) => record.id !== id));
     } catch (error) {
       console.error('Delete error:', error);
       throw error;
@@ -294,12 +301,13 @@ export default function Home() {
   const handleSearch = () => {
     if (!dateRange.start || !dateRange.end) {
       fetchWeather(location);
+
       return;
     }
 
     const start = convertFromCalendarDate(dateRange.start);
     const end = convertFromCalendarDate(dateRange.end);
-    
+
     console.log('Searching with dates:', { start, end });
     fetchWeather(location, start, end);
   };
@@ -308,14 +316,15 @@ export default function Home() {
     if (!value || !value.start || !value.end) {
       const today = new Date();
       const fiveDaysLater = addDays(today, 7);
-      
+
       const defaultRange = {
         start: convertToCalendarDate(today),
-        end: convertToCalendarDate(fiveDaysLater)
+        end: convertToCalendarDate(fiveDaysLater),
       };
-      
+
       setDateRange(defaultRange);
       fetchWeather(location, today, fiveDaysLater);
+
       return;
     }
 
@@ -324,30 +333,30 @@ export default function Home() {
 
     console.log('Date range changed:', {
       start: startDate.toISOString(),
-      end: endDate.toISOString()
+      end: endDate.toISOString(),
     });
 
     // Don't modify the dates, just use them as selected
     setDateRange({
       start: value.start,
-      end: value.end
+      end: value.end,
     });
-    
+
     fetchWeather(location, startDate, endDate);
   };
 
   const handleFiveDayForecast = () => {
     const today = new Date();
     const fiveDaysLater = addDays(today, 4); // 5 days including today
-    
+
     const startDate = convertToCalendarDate(today);
     const endDate = convertToCalendarDate(fiveDaysLater);
-    
+
     setDateRange({
       start: startDate,
-      end: endDate
+      end: endDate,
     });
-    
+
     fetchWeather(location, today, fiveDaysLater);
   };
 
@@ -363,69 +372,58 @@ export default function Home() {
 
   const currentWeatherTitle = useMemo(() => {
     if (!weatherData) return '';
-    
-    const earliestDate = dateRange.start 
-      ? new Date(dateRange.start.toString()) 
-      : new Date();
-    
+
+    const earliestDate = dateRange.start ? new Date(dateRange.start.toString()) : new Date();
+
     return `Weather in ${weatherData.location} on ${format(earliestDate, 'EEEE, MMMM d, yyyy')}`;
   }, [weatherData, dateRange]);
 
   const forecastSectionTitle = useMemo(() => {
     if (!dateRange.start || !dateRange.end) return 'Range';
-    
+
     const startDate = new Date(dateRange.start.toString());
     const endDate = new Date(dateRange.end.toString());
-    
+
     return `${format(startDate, 'MMMM d, yyyy')} - ${format(endDate, 'MMMM d, yyyy')}`;
   }, [dateRange]);
 
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-4xl font-bold text-center mb-8">{currentWeatherTitle}</h1>
-      
+
       {/* Search and Date Range Section */}
       <div className="space-y-4 mb-8">
         <div className="flex gap-4">
           <Input
-            type="text"
+            className="flex-grow"
             placeholder="Enter location (city, zip code, landmark...)"
+            type="text"
             value={location}
             onChange={(e) => setLocation(e.target.value)}
-            className="flex-grow"
           />
-          <Button
-            color="primary"
-            onClick={handleSearch}
-            isLoading={loading}
-          >
+          <Button color="primary" isLoading={loading} onClick={handleSearch}>
             Get Weather
           </Button>
         </div>
 
         <div className="flex items-center gap-4 w-full">
           <DateRangePicker
-            value={dateRange}
-            onChange={handleDateRangeChange}
-            maxValue={convertToCalendarDate(addDays(new Date(), 30))}
+            className="flex-grow"
             defaultValue={{
               start: convertToCalendarDate(new Date()),
-              end: convertToCalendarDate(addDays(new Date(), 7))
+              end: convertToCalendarDate(addDays(new Date(), 7)),
             }}
-            className="flex-grow"
+            maxValue={convertToCalendarDate(addDays(new Date(), 30))}
+            value={dateRange}
+            onChange={handleDateRangeChange}
           />
-          <Button
-            color="secondary"
-            onClick={handleFiveDayForecast}
-          >
+          <Button color="secondary" onClick={handleFiveDayForecast}>
             5-Day Forecast
           </Button>
         </div>
       </div>
 
-      {error && (
-        <div className="text-red-500 mb-4">{error}</div>
-      )}
+      {error && <div className="text-red-500 mb-4">{error}</div>}
 
       {weatherData && (
         <div className="space-y-6 mb-8">
@@ -444,14 +442,15 @@ export default function Home() {
                   {/* Current Temperature Section */}
                   <div className="text-center w-full max-w-md">
                     <div className="flex items-center justify-center mb-6">
-                      <img 
-                        src={getWeatherIcon(weatherData.current.icon)} 
-                        alt={weatherData.current.description} 
+                      <img
+                        alt={weatherData.current.description}
                         className="w-32 h-32 mr-6"
+                        src={getWeatherIcon(weatherData.current.icon)}
                       />
                       <div>
                         <h3 className="text-6xl font-bold text-default-900 dark:text-white">
-                          {convertTemp(weatherData.current.temp).toFixed(1)}°{unit === 'celsius' ? 'C' : 'F'}
+                          {convertTemp(weatherData.current.temp).toFixed(1)}°
+                          {unit === 'celsius' ? 'C' : 'F'}
                         </h3>
                         <p className="text-default-600 dark:text-default-300 capitalize text-xl">
                           {weatherData.current.description}
@@ -463,7 +462,8 @@ export default function Home() {
                     <div className="bg-red-100 dark:bg-red-900/30 p-4 rounded-lg mb-4 w-full">
                       <p className="text-sm text-red-600 dark:text-red-300">Max Temp</p>
                       <p className="font-semibold text-red-900 dark:text-red-100 text-xl">
-                        {convertTemp(weatherData.current.temp_max).toFixed(1)}°{unit === 'celsius' ? 'C' : 'F'}
+                        {convertTemp(weatherData.current.temp_max).toFixed(1)}°
+                        {unit === 'celsius' ? 'C' : 'F'}
                       </p>
                     </div>
 
@@ -471,7 +471,8 @@ export default function Home() {
                     <div className="bg-blue-100 dark:bg-blue-900/30 p-4 rounded-lg w-full">
                       <p className="text-sm text-blue-600 dark:text-blue-300">Min Temp</p>
                       <p className="font-semibold text-blue-900 dark:text-blue-100 text-xl">
-                        {convertTemp(weatherData.current.temp_min).toFixed(1)}°{unit === 'celsius' ? 'C' : 'F'}
+                        {convertTemp(weatherData.current.temp_min).toFixed(1)}°
+                        {unit === 'celsius' ? 'C' : 'F'}
                       </p>
                     </div>
                   </div>
@@ -479,10 +480,10 @@ export default function Home() {
 
                 {/* Map Component */}
                 <div>
-                  <GoogleMapComponent 
-                    latitude={weatherData.latitude} 
-                    longitude={weatherData.longitude} 
-                    location={location} 
+                  <GoogleMapComponent
+                    latitude={weatherData.latitude}
+                    location={location}
+                    longitude={weatherData.longitude}
                   />
                 </div>
               </div>
@@ -492,31 +493,31 @@ export default function Home() {
           {/* Forecast Section */}
           <Divider className="my-6" />
           <h2 className="text-2xl font-semibold mb-4">{forecastSectionTitle}</h2>
-          
+
           {weatherData.forecast && weatherData.forecast.length > 0 ? (
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               {weatherData.forecast.map((day, index) => (
                 <Card key={index} className="p-4 text-center">
                   <CardBody>
                     <p className="font-semibold">{getDayName(day.date)}</p>
-                    <img 
-                      src={getWeatherIcon(day.icon)} 
-                      alt={day.description} 
+                    <img
+                      alt={day.description}
                       className="w-16 h-16 mx-auto my-2"
+                      src={getWeatherIcon(day.icon)}
                     />
                     <div className="flex flex-col items-center justify-center">
                       <p className="text-sm text-default-600 dark:text-default-400">Max Temp</p>
                       <p className="font-semibold text-default-900 dark:text-default-100 text-lg">
                         {convertTemp(day.temp_max).toFixed(1)}°{unit === 'celsius' ? 'C' : 'F'}
                       </p>
-                      <p className="text-sm text-default-600 dark:text-default-400 mt-1">Min Temp</p>
+                      <p className="text-sm text-default-600 dark:text-default-400 mt-1">
+                        Min Temp
+                      </p>
                       <p className="font-semibold text-default-900 dark:text-default-100">
                         {convertTemp(day.temp_min).toFixed(1)}°{unit === 'celsius' ? 'C' : 'F'}
                       </p>
                     </div>
-                    <p className="text-xs text-gray-600 mt-1 capitalize">
-                      {day.description}
-                    </p>
+                    <p className="text-xs text-gray-600 mt-1 capitalize">{day.description}</p>
                   </CardBody>
                 </Card>
               ))}
@@ -530,10 +531,7 @@ export default function Home() {
       {/* Save/Update Record Button */}
       {weatherData && (
         <div className="mt-4 flex justify-end">
-          <Button 
-            color="success" 
-            onClick={handleSaveOrUpdateRecord}
-          >
+          <Button color="success" onClick={handleSaveOrUpdateRecord}>
             {selectedRecord ? 'Update Record' : 'Save Record'}
           </Button>
         </div>
@@ -542,22 +540,18 @@ export default function Home() {
       <Divider className="my-8" />
 
       {/* Records Table */}
-      <RecordsTable 
-        records={records}
-        onDelete={handleDeleteRecord}
-        onView={handleViewRecord}
-      />
-      
+      <RecordsTable records={records} onDelete={handleDeleteRecord} onView={handleViewRecord} />
+
       {/* Export Modal */}
-      <ExportModal 
+      <ExportModal
         isOpen={isExportModalOpen}
-        onClose={() => setIsExportModalOpen(false)}
-        records={records.map(record => ({
+        records={records.map((record) => ({
           id: record.id,
           location: record.location,
           startDate: record.startDate,
-          endDate: record.endDate
+          endDate: record.endDate,
         }))}
+        onClose={() => setIsExportModalOpen(false)}
       />
     </div>
   );

@@ -6,9 +6,11 @@ import { Table, TableHeader, TableBody, TableColumn, TableRow, TableCell } from 
 import { Button } from '@heroui/button';
 import { FileDown } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
-import { useTemperature } from '@/contexts/temperature-unit';
-import ExportModal from './ExportModal';
 import toast from 'react-hot-toast';
+
+import ExportModal from './ExportModal';
+
+import { useTemperature } from '@/contexts/temperature-unit';
 import { WeatherRecord } from '@/types/weather';
 
 interface RecordsTableProps {
@@ -44,12 +46,12 @@ export default function RecordsTable({ records, onDelete, onView }: RecordsTable
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-bold">Weather Records</h2>
           <div className="flex space-x-2">
-            <Button 
-              color="primary" 
-              variant="bordered"
-              onPress={() => setIsExportModalOpen(true)}
+            <Button
+              color="primary"
               isDisabled={records.length === 0}
               startContent={<FileDown size={18} />}
+              variant="bordered"
+              onPress={() => setIsExportModalOpen(true)}
             >
               Export Records
             </Button>
@@ -93,15 +95,15 @@ export default function RecordsTable({ records, onDelete, onView }: RecordsTable
           </TableBody>
         </Table>
 
-        <ExportModal 
+        <ExportModal
           isOpen={isExportModalOpen}
-          onClose={() => setIsExportModalOpen(false)}
-          records={records.map(record => ({
+          records={records.map((record) => ({
             id: record.id,
             location: record.location,
             startDate: record.startDate,
-            endDate: record.endDate
+            endDate: record.endDate,
           }))}
+          onClose={() => setIsExportModalOpen(false)}
         />
       </CardBody>
     </Card>

@@ -25,6 +25,7 @@ export function useGeolocation() {
         error: 'Geolocation is not supported by your browser',
         location: null,
       });
+
       return;
     }
 

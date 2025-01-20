@@ -16,11 +16,11 @@ export function TemperatureProvider({ children }: { children: React.ReactNode })
   const [unit, setUnit] = useState<TemperatureUnit>('fahrenheit');
 
   const toggleUnit = () => {
-    setUnit(prev => prev === 'celsius' ? 'fahrenheit' : 'celsius');
+    setUnit((prev) => (prev === 'celsius' ? 'fahrenheit' : 'celsius'));
   };
 
   const convertTemp = (celsius: number) => {
-    return unit === 'celsius' ? celsius : (celsius * 9/5) + 32;
+    return unit === 'celsius' ? celsius : (celsius * 9) / 5 + 32;
   };
 
   return (
@@ -32,8 +32,10 @@ export function TemperatureProvider({ children }: { children: React.ReactNode })
 
 export function useTemperature() {
   const context = useContext(TemperatureContext);
+
   if (context === undefined) {
     throw new Error('useTemperature must be used within a TemperatureProvider');
   }
+
   return context;
 }

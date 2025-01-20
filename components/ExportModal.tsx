@@ -5,9 +5,10 @@ import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from '@herou
 import { Button } from '@heroui/button';
 import { Checkbox } from '@heroui/checkbox';
 import { Select, SelectItem } from '@heroui/select';
-import { downloadFile, ExportFormat, validFormats } from '@/lib/export-utils';
 import { format, parseISO } from 'date-fns';
 import toast from 'react-hot-toast';
+
+import { downloadFile, ExportFormat, validFormats } from '@/lib/export-utils';
 
 interface ExportRecord {
   id: number;
@@ -27,24 +28,21 @@ export default function ExportModal({ isOpen, onClose, records }: ExportModalPro
   const [exportFormat, setExportFormat] = useState<ExportFormat>('json');
 
   const handleRecordSelect = (recordId: number) => {
-    setSelectedRecords(prev => 
-      prev.includes(recordId) 
-        ? prev.filter(id => id !== recordId)
-        : [...prev, recordId]
+    setSelectedRecords((prev) =>
+      prev.includes(recordId) ? prev.filter((id) => id !== recordId) : [...prev, recordId]
     );
   };
 
   const handleSelectAll = () => {
     setSelectedRecords(
-      selectedRecords.length === records.length 
-        ? [] 
-        : records.map(record => record.id)
+      selectedRecords.length === records.length ? [] : records.map((record) => record.id)
     );
   };
 
   const handleExport = async () => {
     if (selectedRecords.length === 0) {
       toast.error('Please select at least one record to export');
+
       return;
     }
 
@@ -57,18 +55,14 @@ export default function ExportModal({ isOpen, onClose, records }: ExportModalPro
         body: JSON.stringify({
           action: 'export',
           recordIds: selectedRecords,
-          format: exportFormat
-        })
+          format: exportFormat,
+        }),
       });
 
       const result = await response.json();
 
       if (result.content) {
-        downloadFile(
-          result.content, 
-          `${result.filename}.${exportFormat}`, 
-          result.mimeType
-        );
+        downloadFile(result.content, `${result.filename}.${exportFormat}`, result.mimeType);
         toast.success(`Exported ${selectedRecords.length} records successfully`);
         onClose();
       } else {
@@ -83,6 +77,7 @@ export default function ExportModal({ isOpen, onClose, records }: ExportModalPro
   const formatDateRange = (startDate: string, endDate: string) => {
     const start = format(parseISO(startDate), 'MMM d, yyyy');
     const end = format(parseISO(endDate), 'MMM d, yyyy');
+
     return `${start} - ${end}`;
   };
 
@@ -94,16 +89,12 @@ export default function ExportModal({ isOpen, onClose, records }: ExportModalPro
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <span>Select Records to Export</span>
-              <Button 
-                size="sm" 
-                variant="ghost" 
-                onClick={handleSelectAll}
-              >
+              <Button size="sm" variant="ghost" onClick={handleSelectAll}>
                 {selectedRecords.length === records.length ? 'Deselect All' : 'Select All'}
               </Button>
             </div>
             <div className="max-h-64 overflow-y-auto">
-              {records.map(record => (
+              {records.map((record) => (
                 <div key={record.id} className="flex items-center space-x-2 mb-2">
                   <Checkbox
                     isSelected={selectedRecords.includes(record.id)}
@@ -117,14 +108,15 @@ export default function ExportModal({ isOpen, onClose, records }: ExportModalPro
             </div>
             <div className="mt-4">
               <label className="block mb-2">Export Format</label>
-              <Select 
-                selectedKeys={[exportFormat]} 
+              <Select
+                selectedKeys={[exportFormat]}
                 onSelectionChange={(keys) => {
                   const selected = Array.from(keys)[0] as ExportFormat;
+
                   setExportFormat(selected);
                 }}
               >
-                {validFormats.map(format => (
+                {validFormats.map((format) => (
                   <SelectItem key={format} value={format}>
                     {format.toUpperCase()}
                   </SelectItem>
@@ -137,11 +129,7 @@ export default function ExportModal({ isOpen, onClose, records }: ExportModalPro
           <Button variant="light" onPress={onClose}>
             Cancel
           </Button>
-          <Button 
-            color="primary" 
-            onPress={handleExport}
-            isDisabled={selectedRecords.length === 0}
-          >
+          <Button color="primary" isDisabled={selectedRecords.length === 0} onPress={handleExport}>
             Export
           </Button>
         </ModalFooter>

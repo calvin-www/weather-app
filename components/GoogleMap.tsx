@@ -9,22 +9,22 @@ interface GoogleMapComponentProps {
   location: string;
 }
 
-const GoogleMapComponent: React.FC<GoogleMapComponentProps> = ({ 
-  latitude, 
-  longitude, 
-  location 
+const GoogleMapComponent: React.FC<GoogleMapComponentProps> = ({
+  latitude,
+  longitude,
+  location,
 }) => {
   const [mapError, setMapError] = useState<string | null>(null);
 
   // Robust API key detection
-  const apiKey = 
-    process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || 
-    process.env.GOOGLE_MAPS_API_KEY || 
-    'AIzaSyAnBbWcHvMVsJlB8uQqELfyRvt_9nXiloA';  // Fallback to the hardcoded key
+  const apiKey =
+    process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ||
+    process.env.GOOGLE_MAPS_API_KEY ||
+    'AIzaSyAnBbWcHvMVsJlB8uQqELfyRvt_9nXiloA'; // Fallback to the hardcoded key
 
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: apiKey || '',
-    libraries: ['places']
+    libraries: ['places'],
   });
 
   useEffect(() => {
@@ -39,23 +39,23 @@ const GoogleMapComponent: React.FC<GoogleMapComponentProps> = ({
     styles: [
       {
         featureType: 'landscape',
-        stylers: [{ saturation: -100 }, { lightness: 60 }]
+        stylers: [{ saturation: -100 }, { lightness: 60 }],
       },
       {
         featureType: 'road',
-        stylers: [{ saturation: -100 }, { lightness: 40 }]
+        stylers: [{ saturation: -100 }, { lightness: 40 }],
       },
       {
         featureType: 'water',
-        stylers: [{ color: '#a0d6f5' }]
-      }
+        stylers: [{ color: '#a0d6f5' }],
+      },
     ],
     zoomControl: true,
     mapTypeControl: false,
     scaleControl: false,
     streetViewControl: false,
     rotateControl: false,
-    fullscreenControl: false
+    fullscreenControl: false,
   };
 
   const containerStyle = {
@@ -64,22 +64,21 @@ const GoogleMapComponent: React.FC<GoogleMapComponentProps> = ({
     borderRadius: '16px',
     boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
     overflow: 'hidden',
-    border: '2px solid #f0f0f0'
+    border: '2px solid #f0f0f0',
   };
 
   const center = {
     lat: latitude,
-    lng: longitude
+    lng: longitude,
   };
 
   if (!apiKey) {
     return (
       <div className="w-full h-[400px] flex items-center justify-center bg-gray-100 text-red-600 rounded-lg shadow-md">
-        Google Maps API key is missing. 
+        Google Maps API key is missing.
         <pre className="ml-4 text-xs">
-          Checked:
-          - NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: {process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}
-          - GOOGLE_MAPS_API_KEY: {process.env.GOOGLE_MAPS_API_KEY}
+          Checked: - NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: {process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}-
+          GOOGLE_MAPS_API_KEY: {process.env.GOOGLE_MAPS_API_KEY}
         </pre>
       </div>
     );
@@ -103,19 +102,14 @@ const GoogleMapComponent: React.FC<GoogleMapComponentProps> = ({
 
   return (
     <div className="w-full rounded-xl overflow-hidden shadow-lg">
-      <GoogleMap
-        mapContainerStyle={containerStyle}
-        center={center}
-        zoom={10}
-        options={mapOptions}
-      >
-        <Marker 
-          position={center} 
-          title={location}
+      <GoogleMap center={center} mapContainerStyle={containerStyle} options={mapOptions} zoom={10}>
+        <Marker
           icon={{
             url: 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png',
-            scaledSize: new window.google.maps.Size(40, 40)
+            scaledSize: new window.google.maps.Size(40, 40),
           }}
+          position={center}
+          title={location}
         />
       </GoogleMap>
     </div>
