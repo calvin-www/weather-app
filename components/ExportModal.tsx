@@ -42,7 +42,6 @@ export default function ExportModal({ isOpen, onClose, records }: ExportModalPro
   const handleExport = async () => {
     if (selectedRecords.length === 0) {
       toast.error('Please select at least one record to export');
-
       return;
     }
 
@@ -54,21 +53,27 @@ export default function ExportModal({ isOpen, onClose, records }: ExportModalPro
         },
         body: JSON.stringify({
           action: 'export',
-          recordIds: selectedRecords,
+          recordIds: selectedRecords.map(id => Number(id)),
           format: exportFormat,
         }),
       });
 
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Export failed with status: ${response.status}`);
+      }
+
       const result = await response.json();
 
-      if (result.content) {
-        downloadFile(result.content, `${result.filename}.${exportFormat}`, result.mimeType);
-        toast.success(`Exported ${selectedRecords.length} records successfully`);
-        onClose();
-      } else {
-        toast.error('Export failed');
+      if (!result.content || !result.filename || !result.mimeType) {
+        throw new Error('Invalid response format from server');
       }
+
+      downloadFile(result.content, `${result.filename}.${exportFormat}`, result.mimeType);
+      toast.success(`Exported ${selectedRecords.length} records successfully`);
+      onClose();
     } catch (error) {
+      console.error('Export error:', error);
       const errorMessage = error instanceof Error ? error.message : 'An error occurred during export';
       toast.error(errorMessage);
     }

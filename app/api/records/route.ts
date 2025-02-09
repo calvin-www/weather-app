@@ -57,30 +57,52 @@ export async function POST(request: Request) {
     if (action === 'export') {
       const { recordIds, format } = body;
 
+      console.log('Export request received:', { recordIds, format });
+
+      if (!Array.isArray(recordIds) || recordIds.length === 0) {
+        console.error('Invalid recordIds:', recordIds);
+        return NextResponse.json({ error: 'Invalid record IDs' }, { status: 400 });
+      }
+
       if (!validFormats.includes(format)) {
+        console.error('Invalid format:', format);
         return NextResponse.json({ error: 'Invalid export format' }, { status: 400 });
       }
 
-      const records = await db.weatherRecord.findMany({
-        where: {
-          id: {
-            in: recordIds,
+      try {
+        const records = await db.weatherRecord.findMany({
+          where: {
+            id: {
+              in: recordIds.map(id => Number(id)),
+            },
           },
-        },
-      });
+        });
 
-      if (!records.length) {
-        return NextResponse.json({ error: 'No records found' }, { status: 404 });
+        console.log(`Found ${records.length} records to export`);
+
+        if (!records.length) {
+          return NextResponse.json({ error: 'No records found' }, { status: 404 });
+        }
+
+        const exportedData = exportFormats[format as ExportFormat](records);
+        const filename = `weather_records_${new Date().toISOString().split('T')[0]}`;
+        const mimeType = exportMimeTypes[format as ExportFormat];
+
+        console.log('Export successful:', { format, filename, recordCount: records.length });
+
+        return NextResponse.json({
+          success: true,
+          content: exportedData,
+          filename,
+          mimeType,
+        });
+      } catch (error) {
+        console.error('Export processing error:', error);
+        return NextResponse.json(
+          { error: error instanceof Error ? error.message : 'Failed to process export' },
+          { status: 500 }
+        );
       }
-
-      const exportedData = exportFormats[format as ExportFormat](records);
-
-      return NextResponse.json({
-        success: true,
-        content: exportedData,
-        filename: `weather_records_${new Date().toISOString().split('T')[0]}`,
-        mimeType: exportMimeTypes[format as ExportFormat],
-      });
     }
 
     // Handle record creation
